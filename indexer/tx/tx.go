@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	terra "github.com/crescent-network/crescent/v2/app"
+	terra "github.com/crescent-network/crescent/app"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tm "github.com/tendermint/tendermint/types"
 	"github.com/terra-money/mantlemint/db/safe_batch"

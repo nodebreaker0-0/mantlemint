@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime"
 
-	terra "github.com/crescent-network/crescent/v2/app"
+	terra "github.com/crescent-network/crescent/app"
 	"github.com/gorilla/mux"
 	tm "github.com/tendermint/tendermint/types"
 	tmdb "github.com/tendermint/tm-db"

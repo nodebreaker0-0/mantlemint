@@ -3,7 +3,7 @@ package export
 import (
 	"net/http"
 
-	terra "github.com/crescent-network/crescent/v2/app"
+	terra "github.com/crescent-network/crescent/app"
 	"github.com/gorilla/mux"
 )
 

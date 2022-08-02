@@ -11,8 +11,8 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	core "github.com/crescent-network/crescent/v2/app"
-	terra "github.com/crescent-network/crescent/v2/app"
+	core "github.com/crescent-network/crescent/app"
+	terra "github.com/crescent-network/crescent/app"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"

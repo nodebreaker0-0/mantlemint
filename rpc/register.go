@@ -13,8 +13,8 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/server/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	terra "github.com/crescent-network/crescent/v2/app"
-	"github.com/crescent-network/crescent/v2/app/params"
+	terra "github.com/crescent-network/crescent/app"
+	"github.com/crescent-network/crescent/app/params"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"

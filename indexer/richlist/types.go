@@ -6,7 +6,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	terra "github.com/crescent-network/crescent/v2/app"
+	terra "github.com/crescent-network/crescent/app"
 	"github.com/google/btree"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/terra-money/mantlemint/lib"

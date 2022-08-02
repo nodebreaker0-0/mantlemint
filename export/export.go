@@ -12,7 +12,7 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/distribution/types"
 	distrotypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	terra "github.com/crescent-network/crescent/v2/app"
+	terra "github.com/crescent-network/crescent/app"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
