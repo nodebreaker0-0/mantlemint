@@ -12,13 +12,13 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/distribution/types"
 	distrotypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	terra "github.com/crescent-network/crescent/v2/app"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	terra "github.com/terra-money/core/v2/app"
 )
 
 var IsAccountExportWorkerRunning = false
 
-func ExportAllAccounts(app *terra.TerraApp) error {
+func ExportAllAccounts(app *terra.App) error {
 	if IsAccountExportWorkerRunning {
 		return fmt.Errorf("exporting is still running")
 	}
@@ -27,7 +27,7 @@ func ExportAllAccounts(app *terra.TerraApp) error {
 	return nil
 }
 
-func ExportCirculatingSupply(app *terra.TerraApp) (sdktypes.Int, error) {
+func ExportCirculatingSupply(app *terra.App) (sdktypes.Int, error) {
 	height := app.LastBlockHeight()
 	ctx := app.NewContext(true, tmproto.Header{Height: height})
 	time := time.Now()
@@ -65,7 +65,7 @@ func ExportCirculatingSupply(app *terra.TerraApp) (sdktypes.Int, error) {
 	return lunaTotalSupply.Sub(lunaCommunityPool).Sub(totalVesting), nil
 }
 
-func runAccountExportWorker(app *terra.TerraApp) {
+func runAccountExportWorker(app *terra.App) {
 	app.Logger().Info("[export] exporting accounts")
 	height := app.LastBlockHeight()
 	ctx := app.NewContext(true, tmproto.Header{Height: height})

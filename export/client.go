@@ -3,11 +3,11 @@ package export
 import (
 	"net/http"
 
+	terra "github.com/crescent-network/crescent/v2/app"
 	"github.com/gorilla/mux"
-	terra "github.com/terra-money/core/v2/app"
 )
 
-func RegisterRESTRoutes(router *mux.Router, app *terra.TerraApp) {
+func RegisterRESTRoutes(router *mux.Router, app *terra.App) {
 	router.Handle("/export/accounts", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		err := ExportAllAccounts(app)
 		if err != nil {

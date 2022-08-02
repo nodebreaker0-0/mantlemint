@@ -6,9 +6,9 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	terra "github.com/crescent-network/crescent/v2/app"
 	"github.com/google/btree"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	terra "github.com/terra-money/core/v2/app"
 	"github.com/terra-money/mantlemint/lib"
 )
 
@@ -157,7 +157,7 @@ func (list Richlist) Extract(height uint64, len int, threshold *sdk.Coin) (extra
 	return
 }
 
-func (list *Richlist) Apply(changes map[string]sdk.Int, app *terra.TerraApp, height uint64, denom string) (err error) {
+func (list *Richlist) Apply(changes map[string]sdk.Int, app *terra.App, height uint64, denom string) (err error) {
 	ctx := app.NewContext(true, tmproto.Header{})
 
 	for address, amount := range changes {

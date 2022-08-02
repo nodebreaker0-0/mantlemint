@@ -13,18 +13,18 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/server/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	terra "github.com/crescent-network/crescent/v2/app"
+	"github.com/crescent-network/crescent/v2/app/params"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	terra "github.com/terra-money/core/v2/app"
-	"github.com/terra-money/core/v2/app/params"
 	mconfig "github.com/terra-money/mantlemint/config"
 	"github.com/terra-money/mantlemint/export"
 )
 
 func StartRPC(
-	app *terra.TerraApp,
+	app *terra.App,
 	rpcclient rpcclient.Client,
 	chainId string,
 	codec params.EncodingConfig,

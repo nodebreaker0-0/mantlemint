@@ -9,8 +9,8 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	terra "github.com/crescent-network/crescent/v2/app"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	terra "github.com/terra-money/core/v2/app"
 	"github.com/terra-money/mantlemint/config"
 	"github.com/terra-money/mantlemint/db/safe_batch"
 	"github.com/terra-money/mantlemint/indexer"
@@ -36,7 +36,7 @@ var cfg = config.GetConfig()
 // for now, we only handle a richlist for LUNA
 var richlist = NewRichlist(0, cfg.RichlistThreshold)
 
-var IndexRichlist = indexer.CreateIndexer(func(indexerDB safe_batch.SafeBatchDB, block *tm.Block, blockID *tm.BlockID, evc *mantlemint.EventCollector, app *terra.TerraApp) (err error) {
+var IndexRichlist = indexer.CreateIndexer(func(indexerDB safe_batch.SafeBatchDB, block *tm.Block, blockID *tm.BlockID, evc *mantlemint.EventCollector, app *terra.App) (err error) {
 	height := uint64(block.Height)
 
 	// skip if this indexer is disabled or at genesis height. genesis block cannot be parsed here.
@@ -108,7 +108,7 @@ var IndexRichlist = indexer.CreateIndexer(func(indexerDB safe_batch.SafeBatchDB,
 	return indexerDB.Set(getDefaultKey(height), richlistJSON)
 })
 
-func generateRichlistFromState(indexerDB safe_batch.SafeBatchDB, block *tm.Block, blockID *tm.BlockID, evc *mantlemint.EventCollector, app *terra.TerraApp, height uint64, threshold sdk.Coin) (list *Richlist, err error) {
+func generateRichlistFromState(indexerDB safe_batch.SafeBatchDB, block *tm.Block, blockID *tm.BlockID, evc *mantlemint.EventCollector, app *terra.App, height uint64, threshold sdk.Coin) (list *Richlist, err error) {
 	list = NewRichlist(height, &threshold)
 
 	ctx := app.NewContext(true, tmproto.Header{Height: int64(height)})

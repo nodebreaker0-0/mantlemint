@@ -9,17 +9,15 @@ import (
 	"os"
 	"runtime/debug"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	core "github.com/crescent-network/crescent/v2/app"
+	terra "github.com/crescent-network/crescent/v2/app"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	tendermint "github.com/tendermint/tendermint/types"
-	core "github.com/terra-money/core/v2/app"
-	terra "github.com/terra-money/core/v2/app"
-	wasmconfig "github.com/terra-money/core/v2/app/wasmconfig"
 	blockFeeder "github.com/terra-money/mantlemint/block_feed"
 
 	"github.com/terra-money/mantlemint/config"
@@ -44,16 +42,15 @@ func main() {
 
 	sdkConfig := sdk.GetConfig()
 	sdkConfig.SetCoinType(core.CoinType)
-	accountPubKeyPrefix := core.AccountAddressPrefix + "pub"
-	validatorAddressPrefix := core.AccountAddressPrefix + "valoper"
-	validatorPubKeyPrefix := core.AccountAddressPrefix + "valoperpub"
-	consNodeAddressPrefix := core.AccountAddressPrefix + "valcons"
-	consNodePubKeyPrefix := core.AccountAddressPrefix + "valconspub"
+	accountPubKeyPrefix := core.Bech32PrefixAccAddr + "pub"
+	validatorAddressPrefix := core.Bech32PrefixAccAddr + "valoper"
+	validatorPubKeyPrefix := core.Bech32PrefixAccAddr + "valoperpub"
+	consNodeAddressPrefix := core.Bech32PrefixAccAddr + "valcons"
+	consNodePubKeyPrefix := core.Bech32PrefixAccAddr + "valconspub"
 
-	sdkConfig.SetBech32PrefixForAccount(core.AccountAddressPrefix, accountPubKeyPrefix)
+	sdkConfig.SetBech32PrefixForAccount(core.Bech32PrefixAccAddr, accountPubKeyPrefix)
 	sdkConfig.SetBech32PrefixForValidator(validatorAddressPrefix, validatorPubKeyPrefix)
 	sdkConfig.SetBech32PrefixForConsensusNode(consNodeAddressPrefix, consNodePubKeyPrefix)
-	sdkConfig.SetAddressVerifier(wasmtypes.VerifyAddressLen())
 
 	sdkConfig.Seal()
 
@@ -82,7 +79,7 @@ func main() {
 	cms := rootmulti.NewStore(batched, hldb)
 	vpr := viper.GetViper()
 
-	var app = terra.NewTerraApp(
+	var app = terra.NewApp(
 		logger,
 		batched,
 		nil,
@@ -92,7 +89,6 @@ func main() {
 		0,
 		codec,
 		vpr,
-		wasmconfig.GetConfig(vpr),
 		fauxMerkleModeOpt,
 		func(ba *baseapp.BaseApp) {
 			ba.SetCMS(cms)
