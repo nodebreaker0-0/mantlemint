@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/cosmos/cosmos-sdk v0.44.5
 	github.com/cosmos/iavl v0.17.3
-	github.com/crescent-network/crescent v1.0.0
+	github.com/crescent-network/crescent v1.1.0
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang/snappy v0.0.4
 	github.com/google/btree v1.0.0
