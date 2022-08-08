@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/cosmos/cosmos-sdk v0.45.3
 	github.com/cosmos/iavl v0.17.3
-	github.com/crescent-network/crescent/v2 v2.1.0
+	github.com/crescent-network/crescent/v2 v2.0.0
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang/snappy v0.0.4
 	github.com/gorilla/mux v1.8.0
