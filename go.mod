@@ -111,7 +111,7 @@ require (
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a// indirect
+	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a // indirect
 	google.golang.org/grpc v1.45.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
@@ -122,7 +122,7 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
-	github.com/cosmos/cosmos-sdk => github.com/crescent-network/cosmos-sdk v1.1.0-sdk-0.45.3
+	github.com/cosmos/cosmos-sdk => github.com/crescent-network/cosmos-sdk v1.1.0-sdk-0.45.3.0.20220809121512-089a098f5474
 	github.com/cosmos/ibc-go/v2 => github.com/crescent-network/ibc-go/v2 v2.2.0-crescent
 	github.com/cosmos/ledger-cosmos-go => github.com/terra-money/ledger-terra-go v0.11.2
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
