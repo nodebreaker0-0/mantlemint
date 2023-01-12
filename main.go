@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	abci "github.com/crescent-network/crescent/v4/app"
+	abci "github.com/crescent-network/crescent/v3/app"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"
