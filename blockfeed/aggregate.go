@@ -1,9 +1,11 @@
-package block_feed
+package blockfeed
 
 import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/avast/retry-go"
 )
 
 var _ BlockFeed = (*AggregateSubscription)(nil)
@@ -18,20 +20,53 @@ type AggregateSubscription struct {
 	isSynced              bool
 }
 
-var done *BlockResult = nil
+var done *BlockResult
 
 func NewAggregateBlockFeed(
 	currentBlock int64,
 	rpcEndpoints []string,
 	wsEndpoints []string,
 ) *AggregateSubscription {
-	var rpc, rpcErr = NewRpcSubscription(rpcEndpoints)
+	var rpc *RPCSubscription
+	var ws *WSSubscription
+	var rpcErr error
+	var wsErr error
+
+	retry.Do(
+		func() error {
+			rpc, rpcErr = NewRPCSubscription(rpcEndpoints)
+			if rpcErr != nil {
+				return rpcErr
+			}
+			return nil
+		},
+		retry.OnRetry(func(n uint, err error) {
+			log.Printf("Unable to subscribe to an RPC, Retrying... %v", err)
+		}),
+		retry.Delay(time.Duration(10)*time.Second),
+		retry.Attempts(3000),
+	)
+
 	if rpcErr != nil {
 		panic(rpcErr)
 	}
 
 	// ws starts with 1st occurrence of ws endpoints
-	var ws, wsErr = NewWSSubscription(wsEndpoints)
+	retry.Do(
+		func() error {
+			ws, wsErr = NewWSSubscription(wsEndpoints)
+			if wsErr != nil {
+				return wsErr
+			}
+			return nil
+		},
+		retry.OnRetry(func(n uint, err error) {
+			log.Printf("Unable to subscribe to websocket, Retrying... %v", err)
+		}),
+		retry.Delay(time.Duration(10)*time.Second),
+		retry.Attempts(3000),
+	)
+
 	if wsErr != nil {
 		panic(wsErr)
 	}
@@ -49,9 +84,9 @@ func NewAggregateBlockFeed(
 
 func (ags *AggregateSubscription) Subscribe(rpcIndex int) (chan *BlockResult, error) {
 	// create rpc subscriber
-	cRpc, cRpcErr := ags.rpc.Subscribe(rpcIndex)
-	if cRpcErr != nil {
-		return nil, cRpcErr
+	cRPC, cRPCErr := ags.rpc.Subscribe(rpcIndex)
+	if cRPCErr != nil {
+		return nil, cRPCErr
 	}
 
 	// create websocket subscriber
@@ -69,11 +104,14 @@ func (ags *AggregateSubscription) Subscribe(rpcIndex int) (chan *BlockResult, er
 	// check if the first block received from ws is the right block (currentHeight + 1)
 	// if not, the local blockchain is behind, in such case we would need to sync from Rpc.
 	if firstBlock := <-cWS; firstBlock.Block.Header.Height != ags.lastKnownBlock+1 {
-		log.Printf("[block_feed/aggregate] received the first block(%d), but local blockchain is at (%d)\n", firstBlock.Block.Header.Height, ags.lastKnownBlock)
+		log.Printf(
+			"[block_feed/aggregate] received the first block(%d), but local blockchain is at (%d)\n",
+			firstBlock.Block.Header.Height, ags.lastKnownBlock,
+		)
 		go func() {
 			go ags.rpc.SyncFromUntil(ags.lastKnownBlock+1, firstBlock.Block.Header.Height, rpcIndex)
 			for {
-				r := <-cRpc
+				r := <-cRPC
 				if r != done {
 					ags.aggregateBlockChannel <- r
 					ags.lastKnownBlock = r.Block.Height
@@ -114,12 +152,12 @@ func (ags *AggregateSubscription) Close() error {
 	rpcCloseErr := ags.rpc.Close()
 	wsCloseErr := ags.ws.Close()
 
-	return fmt.Errorf("error during aggregate subscription close: %s, %s", rpcCloseErr, wsCloseErr)
+	return fmt.Errorf("error during aggregate subscription close: %w, %w", rpcCloseErr, wsCloseErr)
 }
 
 // Reconnect reestablishes all underlying connections
 // On any reconnection, it is likely that the underlying RPC is having some problem.
-// To mitigate this,
+// To mitigate this.
 func (ags *AggregateSubscription) Reconnect() {
 	endpointIndex := ags.nextWSEndpoint()
 	time.Sleep(time.Second)
@@ -140,7 +178,7 @@ func (ags *AggregateSubscription) setSyncState(state bool) {
 
 func (ags *AggregateSubscription) nextWSEndpoint() int {
 	ags.lastKnownEndpointIdx++
-	ags.lastKnownEndpointIdx = ags.lastKnownEndpointIdx % ags.wsEndpointsLength
+	ags.lastKnownEndpointIdx %= ags.wsEndpointsLength
 
 	return ags.lastKnownEndpointIdx
 }

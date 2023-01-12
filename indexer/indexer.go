@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	terra "github.com/crescent-network/crescent/v2/app"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/gorilla/mux"
 	tm "github.com/tendermint/tendermint/types"
 	tmdb "github.com/tendermint/tm-db"
-	"github.com/terra-money/mantlemint/db/safe_batch"
+	"github.com/terra-money/mantlemint/db/safebatch"
 	"github.com/terra-money/mantlemint/db/snappy"
 	"github.com/terra-money/mantlemint/mantlemint"
 )
@@ -17,10 +17,11 @@ type Indexer struct {
 	db          tmdb.DB
 	indexerTags []string
 	indexers    []IndexFunc
-	app         *terra.App
+	app         ABCIApp
+	txConfig    client.TxConfig
 }
 
-func NewIndexer(dbName, path string, app *terra.App) (*Indexer, error) {
+func NewIndexer(dbName, path string, app ABCIApp, txConfig client.TxConfig) (*Indexer, error) {
 	indexerDB, indexerDBError := tmdb.NewGoLevelDB(dbName, path)
 	if indexerDBError != nil {
 		return nil, indexerDBError
@@ -33,6 +34,7 @@ func NewIndexer(dbName, path string, app *terra.App) (*Indexer, error) {
 		indexerTags: []string{},
 		indexers:    []IndexFunc{},
 		app:         app,
+		txConfig:    txConfig,
 	}, nil
 }
 
@@ -41,19 +43,28 @@ func (idx *Indexer) RegisterIndexerService(tag string, indexerFunc IndexFunc) {
 	idx.indexers = append(idx.indexers, indexerFunc)
 }
 
-func (idx *Indexer) Run(block *tm.Block, blockId *tm.BlockID, evc *mantlemint.EventCollector) error {
-	//batch := idx.db.NewBatch()
-	batch := safe_batch.NewSafeBatchDB(idx.db)
-	batchedOrigin := batch.(safe_batch.SafeBatchDBCloser)
+func (idx *Indexer) Run(block *tm.Block, blockID *tm.BlockID, evc *mantlemint.EventCollector) error {
+	// batch := idx.db.NewBatch()
+	batch := safebatch.NewSafeBatchDB(idx.db)
+	batchedOrigin := batch.(safebatch.SafeBatchDBCloser)
 	batchedOrigin.Open()
 
 	tStart := time.Now()
 	for _, indexerFunc := range idx.indexers {
-		if indexerErr := indexerFunc(*batch.(*safe_batch.SafeBatchDB), block, blockId, evc, idx.app); indexerErr != nil {
-			return indexerErr
+		err := indexerFunc(
+			*batch.(*safebatch.SafeBatchDB),
+			block, blockID,
+			evc,
+			idx.app,
+			idx.txConfig,
+		)
+		if err != nil {
+			return err
 		}
 	}
 	tEnd := time.Now()
+
+	//nolint:forbidigo
 	fmt.Printf("[indexer] finished %d indexers, %dms\n", len(idx.indexers), tEnd.Sub(tStart).Milliseconds())
 
 	if _, err := batchedOrigin.Flush(); err != nil {

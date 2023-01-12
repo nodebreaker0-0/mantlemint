@@ -4,20 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 
-	terra "github.com/crescent-network/crescent/v2/app"
+	"github.com/cosmos/cosmos-sdk/client"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tm "github.com/tendermint/tendermint/types"
-	"github.com/terra-money/mantlemint/db/safe_batch"
+	"github.com/terra-money/mantlemint/db/safebatch"
 	"github.com/terra-money/mantlemint/indexer"
 	"github.com/terra-money/mantlemint/mantlemint"
 )
 
-var cdc = terra.MakeEncodingConfig()
-
-var IndexTx = indexer.CreateIndexer(func(batch safe_batch.SafeBatchDB, block *tm.Block, blockID *tm.BlockID, evc *mantlemint.EventCollector, _ *terra.App) error {
+var IndexTx = indexer.CreateIndexer(func(
+	indexerDB safebatch.SafeBatchDB,
+	block *tm.Block,
+	blockID *tm.BlockID,
+	evc *mantlemint.EventCollector,
+	app indexer.ABCIApp,
+	txConfig client.TxConfig,
+) error {
 	// encoder; proto -> mem -> json
-	txDecoder := cdc.TxConfig.TxDecoder()
-	jsonEncoder := cdc.TxConfig.TxJSONEncoder()
+	txDecoder := txConfig.TxDecoder()
+	jsonEncoder := txConfig.TxJSONEncoder()
 
 	txHashes := make([]string, len(block.Txs))
 	txRecords := make([]TxRecord, len(block.Txs))
@@ -63,10 +68,9 @@ var IndexTx = indexer.CreateIndexer(func(batch safe_batch.SafeBatchDB, block *tm
 		byHeightPayload[txIndex].Logs = func() json.RawMessage {
 			if response.Code == 0 {
 				return []byte(response.Log)
-			} else {
-				out, _ := json.Marshal([]string{})
-				return out
 			}
+			out, _ := json.Marshal([]string{})
+			return out
 		}()
 		byHeightPayload[txIndex].TxHash = fmt.Sprintf("%X", hash)
 		byHeightPayload[txIndex].Timestamp = block.Time
@@ -80,7 +84,7 @@ var IndexTx = indexer.CreateIndexer(func(batch safe_batch.SafeBatchDB, block *tm
 			return marshalErr
 		}
 
-		batchSetErr := batch.Set(getKey(txHashes[txIndex]), txRecordJSON)
+		batchSetErr := indexerDB.Set(getKey(txHashes[txIndex]), txRecordJSON)
 		if batchSetErr != nil {
 			return batchSetErr
 		}
@@ -92,7 +96,7 @@ var IndexTx = indexer.CreateIndexer(func(batch safe_batch.SafeBatchDB, block *tm
 		return byHeightErr
 	}
 
-	batchSetErr := batch.Set(getByHeightKey(uint64(block.Height)), byHeightJSON)
+	batchSetErr := indexerDB.Set(getByHeightKey(uint64(block.Height)), byHeightJSON)
 	if batchSetErr != nil {
 		return batchSetErr
 	}

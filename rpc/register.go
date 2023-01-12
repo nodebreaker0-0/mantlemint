@@ -2,7 +2,7 @@ package rpc
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,43 +10,41 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
-
 	"github.com/cosmos/cosmos-sdk/server/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	terra "github.com/crescent-network/crescent/v2/app"
-	"github.com/crescent-network/crescent/v2/app/params"
+	abci "github.com/crescent-network/crescent/v4/app"
+	"github.com/crescent-network/crescent/v4/app/params"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	mconfig "github.com/terra-money/mantlemint/config"
-	"github.com/terra-money/mantlemint/export"
 )
 
+//nolint:funlen
 func StartRPC(
-	app *terra.App,
+	app *abci.App,
 	rpcclient rpcclient.Client,
-	chainId string,
-	codec params.EncodingConfig,
+	chainID string,
+	encodingConfig params.EncodingConfig,
 	invalidateTrigger chan int64,
 	registerCustomRoutes func(router *mux.Router),
 	getIsSynced func() bool,
 	mantlemintConfig *mconfig.Config,
 ) error {
 	vp := viper.GetViper()
-	cfg := config.GetConfig(vp)
-
+	cfg, _ := config.GetConfig(vp)
 	// create terra client; register all codecs
 	context := client.
 		Context{}.
 		WithClient(rpcclient).
-		WithCodec(codec.Marshaler).
-		WithInterfaceRegistry(codec.InterfaceRegistry).
-		WithTxConfig(codec.TxConfig).
+		WithCodec(encodingConfig.Marshaler).
+		WithInterfaceRegistry(encodingConfig.InterfaceRegistry).
+		WithTxConfig(encodingConfig.TxConfig).
 		WithAccountRetriever(authtypes.AccountRetriever{}).
-		WithLegacyAmino(codec.Amino).
-		WithHomeDir(terra.DefaultNodeHome).
-		WithChainID(chainId)
+		WithLegacyAmino(encodingConfig.Amino).
+		WithHomeDir(abci.DefaultNodeHome).
+		WithChainID(chainID)
 
 	// create backends for response cache
 	// - cache: used for latest states without `height` parameter
@@ -58,6 +56,7 @@ func StartRPC(
 	go func() {
 		for {
 			height := <-invalidateTrigger
+			//nolint:forbidigo
 			fmt.Printf("[cache-middleware] purging cache at height %d\n", height)
 
 			cache.Metric()
@@ -69,7 +68,7 @@ func StartRPC(
 	}()
 
 	// start new api server
-	apiSrv := api.New(context, tmlog.NewTMLogger(ioutil.Discard))
+	apiSrv := api.New(context, tmlog.NewTMLogger(io.Discard))
 
 	// register custom routes to default api server
 	registerCustomRoutes(apiSrv.Router)
@@ -86,14 +85,9 @@ func StartRPC(
 		}
 	})).Methods("GET")
 
-	// register export routes
-	if mantlemintConfig.EnableExportModule {
-		export.RegisterRESTRoutes(apiSrv.Router, app)
-	}
-
-	// register all default GET routers...
-	app.RegisterAPIRoutes(apiSrv, cfg.API)
-	app.RegisterTendermintService(context)
+	//// register all default GET routers...
+	(*app).RegisterAPIRoutes(apiSrv, cfg.API)
+	(*app).RegisterTendermintService(context)
 	errCh := make(chan error)
 
 	// caching middleware
@@ -115,6 +109,14 @@ func StartRPC(
 			} else {
 				cache.HandleCachedHTTP(writer, request, next)
 			}
+		})
+	})
+
+	pm := NewProxyMiddleware(mantlemintConfig.LCDEndpoints)
+	// proxy middleware to handle unimplemented queries
+	apiSrv.Router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			pm.HandleRequest(writer, request, next)
 		})
 	})
 

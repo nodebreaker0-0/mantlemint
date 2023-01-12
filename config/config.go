@@ -9,37 +9,42 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
-	terra "github.com/crescent-network/crescent/v2/app"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	GenesisPath        string
-	Home               string
-	ChainID            string
-	RPCEndpoints       []string
-	WSEndpoints        []string
-	MantlemintDB       string
-	IndexerDB          string
-	DisableSync        bool
-	EnableExportModule bool
-	RichlistLength     int
-	RichlistThreshold  *sdk.Coin
+	GenesisPath          string
+	Home                 string
+	ChainID              string
+	RPCEndpoints         []string
+	WSEndpoints          []string
+	LCDEndpoints         []string
+	MantlemintDB         string
+	IndexerDB            string
+	DisableSync          bool
+	EnableExportModule   bool
+	RichlistLength       int
+	AccountAddressPrefix string
+	BondDenom            string
+	RichlistThreshold    *sdk.Coin
 }
 
 var singleton Config
 
+//nolint:gochecknoinits
 func init() {
 	singleton = newConfig()
 }
 
-// GetConfig returns singleton config
+// GetConfig returns singleton config.
 func GetConfig() *Config {
 	return &singleton
 }
 
 // newConfig converts envvars into consumable config chunks
+//
+//nolint:funlen
 func newConfig() Config {
 	cfg := Config{
 		// GenesisPath sets the location of genesis
@@ -50,7 +55,10 @@ func newConfig() Config {
 
 		// ChainID sets expected chain id for this mantlemint instance
 		ChainID: getValidEnv("CHAIN_ID"),
-
+		// Feather chains are going to have different prefixes
+		AccountAddressPrefix: getValidEnv("ACCOUNT_ADDRESS_PREFIX"),
+		// Feather chains are going to have different denoms
+		BondDenom: getValidEnv("BOND_DENOM"),
 		// RPCEndpoints is where to pull txs from when fast-syncing
 		RPCEndpoints: func() []string {
 			endpoints := getValidEnv("RPC_ENDPOINTS")
@@ -63,14 +71,19 @@ func newConfig() Config {
 			return strings.Split(endpoints, ",")
 		}(),
 
-		// MantlemintDB is the db name for mantlemint. Defaults to terra.DefaultHome
+		// LCDEndpoints is where to forward unhandled queries to a node
+		LCDEndpoints: func() []string {
+			endpoints := getValidEnv("LCD_ENDPOINTS")
+			return strings.Split(endpoints, ",")
+		}(),
+
+		// MantlemintDB is the db name for mantlemint. Defaults to mantlemint
 		MantlemintDB: func() string {
 			mantlemintDB := getValidEnv("MANTLEMINT_DB")
 			if mantlemintDB == "" {
-				return terra.DefaultNodeHome
-			} else {
-				return mantlemintDB
+				return "mantlemint"
 			}
+			return mantlemintDB
 		}(),
 
 		// IndexerDB is the db name for indexed data
@@ -111,7 +124,7 @@ func newConfig() Config {
 
 			thresholdCoin, err := sdk.ParseCoinNormalized(getValidEnv("RICHLIST_THRESHOLD"))
 			if err != nil {
-				panic(fmt.Errorf("RICHLIST_THRESHOLD is invalid: %v", err))
+				panic(fmt.Errorf("RICHLIST_THRESHOLD is invalid: %w", err))
 			}
 			return &thresholdCoin
 		}(),
@@ -135,6 +148,7 @@ func newConfig() Config {
 	return cfg
 }
 
+//nolint:forbidigo
 func (cfg Config) Print() {
 	fmt.Printf("%+v\n", cfg)
 }

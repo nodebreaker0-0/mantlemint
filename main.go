@@ -4,55 +4,39 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime/debug"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	core "github.com/crescent-network/crescent/v2/app"
-	terra "github.com/crescent-network/crescent/v2/app"
+	abci "github.com/crescent-network/crescent/v4/app"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	tendermint "github.com/tendermint/tendermint/types"
-	blockFeeder "github.com/terra-money/mantlemint/block_feed"
-
+	tmdb "github.com/tendermint/tm-db"
+	blockFeeder "github.com/terra-money/mantlemint/blockfeed"
 	"github.com/terra-money/mantlemint/config"
 	"github.com/terra-money/mantlemint/db/heleveldb"
 	"github.com/terra-money/mantlemint/db/hld"
-	"github.com/terra-money/mantlemint/db/safe_batch"
+	"github.com/terra-money/mantlemint/db/safebatch"
 	"github.com/terra-money/mantlemint/indexer"
 	"github.com/terra-money/mantlemint/indexer/block"
-	"github.com/terra-money/mantlemint/indexer/richlist"
 	"github.com/terra-money/mantlemint/indexer/tx"
 	"github.com/terra-money/mantlemint/mantlemint"
 	"github.com/terra-money/mantlemint/rpc"
 	"github.com/terra-money/mantlemint/store/rootmulti"
-
-	tmdb "github.com/tendermint/tm-db"
 )
 
 // initialize mantlemint for v0.34.x
+//
+//nolint:funlen,forbidigo
 func main() {
 	mantlemintConfig := config.GetConfig()
 	mantlemintConfig.Print()
 
-	sdkConfig := sdk.GetConfig()
-	sdkConfig.SetCoinType(core.CoinType)
-	accountPubKeyPrefix := core.Bech32PrefixAccAddr + "pub"
-	validatorAddressPrefix := core.Bech32PrefixAccAddr + "valoper"
-	validatorPubKeyPrefix := core.Bech32PrefixAccAddr + "valoperpub"
-	consNodeAddressPrefix := core.Bech32PrefixAccAddr + "valcons"
-	consNodePubKeyPrefix := core.Bech32PrefixAccAddr + "valconspub"
-
-	sdkConfig.SetBech32PrefixForAccount(core.Bech32PrefixAccAddr, accountPubKeyPrefix)
-	sdkConfig.SetBech32PrefixForValidator(validatorAddressPrefix, validatorPubKeyPrefix)
-	sdkConfig.SetBech32PrefixForConsensusNode(consNodeAddressPrefix, consNodePubKeyPrefix)
-
-	sdkConfig.Seal()
+	// cmd.SetPrefixes(abci.AccountAddressPrefix)
 
 	ldb, ldbErr := heleveldb.NewLevelDBDriver(&heleveldb.DriverConfig{
 		Name: mantlemintConfig.MantlemintDB,
@@ -63,23 +47,23 @@ func main() {
 		panic(ldbErr)
 	}
 
-	var hldb = hld.ApplyHeightLimitedDB(
+	hldb := hld.ApplyHeightLimitedDB(
 		ldb,
 		&hld.HeightLimitedDBConfig{
 			Debug: true,
 		},
 	)
 
-	batched := safe_batch.NewSafeBatchDB(hldb)
-	batchedOrigin := batched.(safe_batch.SafeBatchDBCloser)
+	batched := safebatch.NewSafeBatchDB(hldb)
+	batchedOrigin := batched.(safebatch.SafeBatchDBCloser)
 	logger := tmlog.NewTMLogger(os.Stdout)
-	codec := terra.MakeEncodingConfig()
+	encodingConfig := abci.MakeEncodingConfig()
 
 	// customize CMS to limit kv store's read height on query
 	cms := rootmulti.NewStore(batched, hldb)
 	vpr := viper.GetViper()
 
-	var app = terra.NewApp(
+	app := abci.NewApp(
 		logger,
 		batched,
 		nil,
@@ -87,7 +71,7 @@ func main() {
 		make(map[int64]bool),
 		mantlemintConfig.Home,
 		0,
-		codec,
+		encodingConfig,
 		vpr,
 		fauxMerkleModeOpt,
 		func(ba *baseapp.BaseApp) {
@@ -96,7 +80,7 @@ func main() {
 	)
 
 	// create app...
-	var appCreator = mantlemint.NewConcurrentQueryClientCreator(app)
+	appCreator := mantlemint.NewConcurrentQueryClientCreator(app)
 	appConns := proxy.NewAppConns(appCreator)
 	appConns.SetLogger(logger)
 	if startErr := appConns.OnStart(); startErr != nil {
@@ -108,8 +92,8 @@ func main() {
 		fmt.Println(a)
 	}()
 
-	var executor = mantlemint.NewMantlemintExecutor(batched, appConns.Consensus())
-	var mm = mantlemint.NewMantlemint(
+	executor := mantlemint.NewMantlemintExecutor(batched, appConns.Consensus())
+	mm := mantlemint.NewMantlemint(
 		batched,
 		appConns,
 		executor,
@@ -159,17 +143,18 @@ func main() {
 	)
 
 	// create indexer service
-	indexerInstance, indexerInstanceErr := indexer.NewIndexer("indexer", mantlemintConfig.Home, app)
+	indexerInstance, indexerInstanceErr := indexer.NewIndexer(
+		mantlemintConfig.IndexerDB, mantlemintConfig.Home, app, encodingConfig.TxConfig,
+	)
 	if indexerInstanceErr != nil {
 		panic(indexerInstanceErr)
 	}
 
 	indexerInstance.RegisterIndexerService("tx", tx.IndexTx)
 	indexerInstance.RegisterIndexerService("block", block.IndexBlock)
-	indexerInstance.RegisterIndexerService("richlist", richlist.IndexRichlist)
 
 	abcicli, _ := appCreator.NewABCIClient()
-	rpccli := rpc.NewRpcClient(abcicli)
+	rpccli := rpc.NewRPCClient(abcicli)
 
 	// rest cache invalidate channel
 	cacheInvalidateChan := make(chan int64)
@@ -179,7 +164,7 @@ func main() {
 		app,
 		rpccli,
 		mantlemintConfig.ChainID,
-		codec,
+		encodingConfig,
 		cacheInvalidateChan,
 
 		// callback for registering custom routers; primarily for indexers
@@ -188,7 +173,6 @@ func main() {
 		func(router *mux.Router) {
 			indexerInstance.RegisterRESTRoute(router, tx.RegisterRESTRoute)
 			indexerInstance.RegisterRESTRoute(router, block.RegisterRESTRoute)
-			indexerInstance.RegisterRESTRoute(router, richlist.RegisterRESTRoute)
 		},
 
 		// inject flag checker for synced
@@ -201,9 +185,11 @@ func main() {
 	}
 
 	// start subscribing to block
+	//nolint:nestif
 	if mantlemintConfig.DisableSync {
 		fmt.Println("running without sync...")
 		forever()
+		return
 	} else if cBlockFeed, blockFeedErr := blockFeed.Subscribe(0); blockFeedErr != nil {
 		panic(blockFeedErr)
 	} else {
@@ -260,18 +246,21 @@ func fauxMerkleModeOpt(app *baseapp.BaseApp) {
 }
 
 func getGenesisDoc(genesisPath string) *tendermint.GenesisDoc {
-	jsonBlob, _ := ioutil.ReadFile(genesisPath)
+	jsonBlob, err := os.ReadFile(genesisPath)
+	if err != nil {
+		panic(err)
+	}
 	shasum := sha1.New()
 	shasum.Write(jsonBlob)
 	sum := hex.EncodeToString(shasum.Sum(nil))
 
 	log.Printf("[v0.34.x/sync] genesis shasum=%s", sum)
 
-	if genesis, genesisErr := tendermint.GenesisDocFromFile(genesisPath); genesisErr != nil {
+	genesis, genesisErr := tendermint.GenesisDocFromFile(genesisPath)
+	if genesisErr != nil {
 		panic(genesisErr)
-	} else {
-		return genesis
 	}
+	return genesis
 }
 
 func forever() {
