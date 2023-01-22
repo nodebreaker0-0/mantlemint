@@ -2091,9 +2091,8 @@ github.com/tendermint/go-amino v0.16.0 h1:GyhmgQKvqF82e2oZeuMSp9JTN0N09emoSZlb2l
 github.com/tendermint/go-amino v0.16.0/go.mod h1:TQU0M1i/ImAo+tYpZi73AU3V/dKeCoMC9Sphe2ZwGME=
 github.com/tendermint/tendermint v0.34.19/go.mod h1:R5+wgIwSxMdKQcmOaeudL0Cjkr3HDkhpcdum6VeU3R4=
 github.com/tendermint/tendermint v0.34.20/go.mod h1:KtOwCLYJcsS1ymtAfnjjAtXfXClbqcqjdqzFt2Em1Ac=
+github.com/tendermint/tendermint v0.34.21 h1:UiGGnBFHVrZhoQVQ7EfwSOLuCtarqCSsRf8VrklqB7s=
 github.com/tendermint/tendermint v0.34.21/go.mod h1:XDvfg6U7grcFTDx7VkzxnhazQ/bspGJAn4DZ6DcLLjQ=
-github.com/tendermint/tendermint v0.34.22 h1:XMhtC8s8QqJO4l/dn+TkQvevTRSow3Vixjclr41o+2Q=
-github.com/tendermint/tendermint v0.34.22/go.mod h1:YpP5vBEAKUT4g6oyfjKgFeZmdB/GjkJAxfF+cgmJg6Y=
 github.com/tenntenn/modver v1.0.1 h1:2klLppGhDgzJrScMpkj9Ujy3rXPUspSjAcev9tSEBgA=
 github.com/tenntenn/modver v1.0.1/go.mod h1:bePIyQPb7UeioSRkw3Q0XeMhYZSMx9B8ePqg6SAMGH0=
 github.com/tenntenn/text/transform v0.0.0-20200319021203-7eef512accb3 h1:f+jULpRQGxTSkNYKJ51yaw6ChIqO+Je8UqsTKN/cDag=
